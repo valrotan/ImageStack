@@ -4,17 +4,10 @@ import click
 import typing
 
 
-@click.command()
-@click.option('--vertical', '-v', 'stack_dir', help='Stack direction', flag_value='vstack')
-@click.option('--horizontal', '-h', 'stack_dir', help='Stack direction', flag_value='hstack', default=True)
-@click.option('--output', '-o', help='Output file path', type=click.Path())
-@click.option('--size', '-s', help='Size of each item in the stack. If 0 all inputs must be same size.',
-              type=click.IntRange(0, None), default=0)
-@click.option('--fps', '-r', help='Frame rate of the output.',
-              type=click.IntRange(1, None), default=30)
-@click.option('--ffmpeg', help='FFMPEG executable dir', type=click.Path(), envvar='FFMPEG', default='ffmpeg')
-@click.argument('inputs', type=click.Path(exists=True), nargs=-1)
 def stack(inputs: typing.List[str], output: str, stack_dir: str, size: int, fps: int, ffmpeg: str):
+    if len(inputs) == 0:
+        return
+
     exec = ffmpeg
     input = ' '.join(map(lambda s: f'-r {fps} -i {s}', inputs))
 
@@ -27,7 +20,9 @@ def stack(inputs: typing.List[str], output: str, stack_dir: str, size: int, fps:
         filter += appendage
 
     filter += f'{stack_dir}=inputs={len(inputs)}[out]'
-    output_options = f'-map [out] -c:v h264 -pix_fmt yuv420p'
+    output_options = f'-map [out]'
+    if output.endswith('mp4'):
+        output_options += ' -c:v h264 -pix_fmt yuv420p'
     command = f'{exec} {input} -filter_complex {filter} {output_options} {output} -y'
 
     args = command.split(' ')
@@ -44,5 +39,19 @@ def stack(inputs: typing.List[str], output: str, stack_dir: str, size: int, fps:
     return output
 
 
+@click.command()
+@click.option('--vertical', '-v', 'stack_dir', help='Stack direction', flag_value='vstack')
+@click.option('--horizontal', '-h', 'stack_dir', help='Stack direction', flag_value='hstack', default=True)
+@click.option('--output', '-o', help='Output file path', type=click.Path())
+@click.option('--size', '-s', help='Size of each item in the stack. If 0 all inputs must be same size.',
+              type=click.IntRange(0, None), default=0)
+@click.option('--fps', '-r', help='Frame rate of the output.',
+              type=click.IntRange(1, None), default=30)
+@click.option('--ffmpeg', help='FFMPEG executable dir', type=click.Path(), envvar='FFMPEG', default='ffmpeg')
+@click.argument('inputs', type=click.Path(exists=True), nargs=-1)
+def stack_command(**args):
+    stack(**args)
+
+
 if __name__ == '__main__':
-    print(stack())
+    print(stack_command())
